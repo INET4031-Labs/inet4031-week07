@@ -21,6 +21,26 @@ In this lab, you apply Kubernetes security controls to your deployed application
 - Week 6 complete: GitHub Actions CI pipeline passing, branch protection configured
 - k3d cluster running with application deployed
 
+## Pulling This Week's Starter Content Into Your Team Repo
+
+This repo (`inet4031-week07`) is instructor-provided starter/reference content for
+Week 7, not something you clone standalone. Pull the pieces you need into your
+team's single repo:
+
+```bash
+git remote add week7 https://github.com/INET4031-Labs/inet4031-week07.git
+git fetch week7
+git checkout week7/main -- manifests .github/workflows scripts docs
+git remote remove week7
+```
+
+This week's `manifests/flask-deployment.yaml` and `.github/workflows/ci.yml` are full
+updated replacements of Week 3's and Week 6's versions (ServiceAccount and
+SecurityContext added to the deployment; a Trivy scan job added to CI) -- the
+checkout intentionally overwrites them. Your other Week 3 manifests
+(`postgres-deployment.yaml`, the two `*-secret.yaml` files) are untouched. Do this
+before you start editing `manifests/` locally this week.
+
 ## Files and Directories
 
 - `docs/` - Role-artifact templates (sprint retrospective, environment log, acceptance criteria, QA report)
