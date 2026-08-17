@@ -547,8 +547,8 @@ Before claiming this lab complete, verify all of the following:
 ### Role Artifacts Completed
 
 - [ ] `docs/sprint-4-retrospective.md` filled with Sprint 3 close and Sprint 4 decisions
-- [ ] `docs/environment-log.md` filled with baseline and end-of-sprint snapshots
-- [ ] `docs/acceptance-criteria.md` filled with team's acceptance criteria
+- [ ] `docs/week-07-environment-log.md` filled with baseline and end-of-sprint snapshots
+- [ ] `docs/week-07-acceptance-criteria.md` filled with team's acceptance criteria
 - [ ] `docs/qa-report-4.md` filled with check results and sign-off
 
 ### Google Doc Reflections
