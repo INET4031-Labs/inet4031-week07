@@ -1,0 +1,40 @@
+# This is Week 3's flask-deployment.yaml (already relabeled to app: flask) with two
+# Week 7 additions: serviceAccountName (Part 1, Step 4) and securityContext (Part 3,
+# Step 12). If your team's manifests/flask-deployment.yaml has diverged from Week 3's
+# baseline, add these two blocks to your existing file instead of overwriting it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      serviceAccountName: flask-app
+      containers:
+      - name: flask
+        image: TODO  # Replace with actual Flask image from week-2/app
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - secretRef:
+            name: flask-credentials
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          capabilities:
+            drop:
+              - ALL
