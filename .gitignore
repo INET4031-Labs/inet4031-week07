@@ -1,0 +1,19 @@
+# Kubeconfig / cluster access
+kubeconfig
+*.kubeconfig
+.kube/
+
+# Trivy scan cache
+.trivy/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.log
