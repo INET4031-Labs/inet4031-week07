@@ -14,7 +14,7 @@ PASS_COUNT=0
 FAIL_COUNT=0
 
 # Check 1: Flask Uses Custom ServiceAccount
-echo "[1/4] Checking Flask ServiceAccount..."
+echo "[1/5] Checking Flask ServiceAccount..."
 SERVICE_ACCOUNT=$(kubectl get pod -l app=flask -o jsonpath='{.items[0].spec.serviceAccountName}' 2>/dev/null || echo "ERROR")
 
 if [ "$SERVICE_ACCOUNT" = "flask-app" ]; then
@@ -27,7 +27,7 @@ fi
 echo ""
 
 # Check 2: NetworkPolicy Applied
-echo "[2/4] Checking NetworkPolicy resources..."
+echo "[2/5] Checking NetworkPolicy resources..."
 POLICIES=$(kubectl get networkpolicy --no-headers 2>/dev/null | wc -l)
 HAS_DEFAULT_DENY=$(kubectl get networkpolicy default-deny-ingress 2>/dev/null && echo "yes" || echo "no")
 HAS_ALLOW_NGINX=$(kubectl get networkpolicy allow-nginx-to-flask 2>/dev/null && echo "yes" || echo "no")
@@ -46,7 +46,7 @@ fi
 echo ""
 
 # Check 3: Application Works After NetworkPolicy
-echo "[3/4] Checking application connectivity..."
+echo "[3/5] Checking application connectivity..."
 RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/response.json http://localhost:8080/incidents 2>/dev/null || echo "000")
 HTTP_CODE="${RESPONSE: -3}"
 
@@ -67,7 +67,7 @@ fi
 echo ""
 
 # Check 4: SecurityContext Is Set
-echo "[4/4] Checking SecurityContext settings..."
+echo "[4/5] Checking SecurityContext settings..."
 ALLOW_PRIV=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}' 2>/dev/null || echo "NOTSET")
 READ_ONLY=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}' 2>/dev/null || echo "NOTSET")
 RUN_NON_ROOT=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.runAsNonRoot}' 2>/dev/null || echo "NOTSET")
@@ -82,11 +82,30 @@ else
 fi
 echo ""
 
+# Check 5: OpenTofu State Matches the Cluster (No Drift)
+echo "[5/5] Checking for OpenTofu drift..."
+if command -v tofu &> /dev/null && [ -d "infrastructure" ]; then
+    TOFU_PLAN_OUTPUT=$(cd infrastructure && tofu plan -no-color 2>&1)
+    if echo "$TOFU_PLAN_OUTPUT" | grep -q "No changes"; then
+        echo "  PASS: tofu plan reports no changes (infrastructure/flask.tf matches the cluster)"
+        ((PASS_COUNT++))
+    else
+        echo "  FAIL: tofu plan detected drift -- infrastructure/flask.tf does not match the live cluster"
+        echo "    This usually means a change was applied with 'kubectl apply' instead of 'tofu apply'."
+        echo "    Update infrastructure/flask.tf to match what you intend, then run 'tofu apply'."
+        ((FAIL_COUNT++))
+    fi
+else
+    echo "  FAIL: tofu is not installed, not on PATH, or infrastructure/ does not exist"
+    ((FAIL_COUNT++))
+fi
+echo ""
+
 echo "==================================================="
 echo "Results Summary"
 echo "==================================================="
-echo "Passed: $PASS_COUNT/4"
-echo "Failed: $FAIL_COUNT/4"
+echo "Passed: $PASS_COUNT/5"
+echo "Failed: $FAIL_COUNT/5"
 
 if [ $FAIL_COUNT -eq 0 ]; then
     echo ""

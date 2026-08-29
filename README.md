@@ -34,16 +34,18 @@ git checkout week7/main -- scripts docs
 git remote remove week7
 ```
 
-**`manifests/flask-deployment.yaml` and `.github/workflows/ci.yml` are not shipped as
-files in this repo.** You edit your own existing Week 3 `flask-deployment.yaml` and
-Week 6 `ci.yml` in place this week (adding `serviceAccountName`/`securityContext` and
+**`infrastructure/flask.tf` and `.github/workflows/ci.yml` are not shipped as
+files in this repo.** You edit your own existing Week 4 `infrastructure/flask.tf` and
+Week 6 `ci.yml` in place this week (adding `service_account_name`/`security_context` and
 a Trivy scan job respectively), following the wiki step by step -- neither file is
-replaced wholesale. Your other Week 3 manifests (`postgres-deployment.yaml`, the two
-`*-secret.yaml` files) are untouched.
+replaced wholesale. Since Week 4, `infrastructure/flask.tf` (not `manifests/flask-deployment.yaml`)
+is the source of truth for the Flask Deployment, so that is where the `serviceAccountName`/
+`securityContext` additions belong; apply them with `tofu apply`, not `kubectl apply`.
+Your Week 3 manifests (`postgres-deployment.yaml`, the two `*-secret.yaml` files) are untouched.
 
 ## Files and Directories
 
-- `docs/` - Role-artifact templates (sprint retrospective, acceptance criteria, QA report)
+- `docs/` - Role-artifact templates (sprint retrospective, QA report)
 - `manifests/` - Kubernetes manifests for security controls (extended during this lab)
 - `scripts/` - Verification script for Week 7 deliverables
 
@@ -61,7 +63,7 @@ Week 7 is Sprint 4 Kickoff. Confirm your team's Sprint 4 role assignments:
 
 - **Scrum Master:** Owns sprint board, leads Sprint Review, coordinates async week preparation
 - **System Admin:** Leads environment checkpoint, documents infrastructure decisions, verifies security control application
-- **QA:** Writes acceptance criteria before implementation, runs validation checks, approves deliverables
+- **QA:** Runs validation checks, verifies RBAC/NetworkPolicy/SecurityContext are enforced, approves deliverables
 - **Developers:** Implement RBAC, NetworkPolicy, SecurityContext, and CI scanning
 
 Refer to your team charter for role rotation details.
