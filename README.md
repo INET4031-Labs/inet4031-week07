@@ -30,27 +30,26 @@ team's single repo:
 ```bash
 git remote add week7 https://github.com/INET4031-Labs/inet4031-week07.git
 git fetch week7
-git checkout week7/main -- manifests .github/workflows scripts docs
+git checkout week7/main -- scripts docs
 git remote remove week7
 ```
 
-This week's `manifests/flask-deployment.yaml` and `.github/workflows/ci.yml` are full
-updated replacements of Week 3's and Week 6's versions (ServiceAccount and
-SecurityContext added to the deployment; a Trivy scan job added to CI) -- the
-checkout intentionally overwrites them. Your other Week 3 manifests
-(`postgres-deployment.yaml`, the two `*-secret.yaml` files) are untouched. Do this
-before you start editing `manifests/` locally this week.
+**`manifests/flask-deployment.yaml` and `.github/workflows/ci.yml` are not shipped as
+files in this repo.** You edit your own existing Week 3 `flask-deployment.yaml` and
+Week 6 `ci.yml` in place this week (adding `serviceAccountName`/`securityContext` and
+a Trivy scan job respectively), following the wiki step by step -- neither file is
+replaced wholesale. Your other Week 3 manifests (`postgres-deployment.yaml`, the two
+`*-secret.yaml` files) are untouched.
 
 ## Files and Directories
 
-- `docs/` - Role-artifact templates (sprint retrospective, environment log, acceptance criteria, QA report)
-- `manifests/` - Kubernetes manifests for security controls (to be created during lab)
+- `docs/` - Role-artifact templates (sprint retrospective, acceptance criteria, QA report)
+- `manifests/` - Kubernetes manifests for security controls (extended during this lab)
 - `scripts/` - Verification script for Week 7 deliverables
-- `WEEK-7-LAB.md` - Full lab directions with step-by-step instructions and TODOs
 
 ## Getting Started
 
-1. Read through `WEEK-7-LAB.md` from the top
+1. Read through the full lab directions in the Wiki tab from the top
 2. Complete the Sprint Review for Sprint 3 (Part 0 of the lab)
 3. Follow the role-specific task assignments
 4. Fill in role-artifact templates as you progress through the lab
