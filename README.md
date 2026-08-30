@@ -2,8 +2,6 @@
 
 **Sprint 4 Kickoff | Synchronous Lab**
 
-> **Architecture Status Notice:** This week's lab assumes your team container allows Docker containers to run in privileged mode (`--privileged` flag). This architecture has not been approved by the professor. If privileged mode is unavailable in your environment, contact your instructor before proceeding.
-
 ## Overview
 
 In this lab, you apply Kubernetes security controls to your deployed application: RBAC (Role-Based Access Control), NetworkPolicy to restrict pod-to-pod traffic, and SecurityContext to prevent privilege escalation inside containers. You will also add an automated image vulnerability scan to the CI pipeline, making security a gate on every build. After completing this lab, you will have a hardened application deployment with RBAC, NetworkPolicy, SecurityContext, and automated vulnerability scanning all committed to your repository.
