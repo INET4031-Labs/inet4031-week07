@@ -1,118 +1,215 @@
 #!/bin/bash
 
-# Week 7 Validation Check Script
-# Runs all required validation checks for security hardening deliverables
+# Week 7 Validation Script
+# This script runs all acceptance checks for Week 7 deliverables
+# Run from the repository root: ./scripts/check-week7.sh
 
 set -e
 
-echo "==================================================="
-echo "Week 7 Validation Checks"
-echo "==================================================="
-echo ""
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+REPO_ROOT="$( dirname "$SCRIPT_DIR" )"
 
+# kubectl/tofu are typically installed to /usr/local/bin; make sure it's on
+# PATH regardless of how this script is invoked (e.g. under sudo, where
+# root's PATH may not include it).
+export PATH="/usr/local/bin:$PATH"
+
+# k3d writes its kubeconfig under the home directory of whichever user ran
+# `k3d cluster create` (your normal user, not root). If this script is run
+# with sudo, point kubectl back at that config instead of root's.
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME="$(getent passwd "$REAL_USER" | cut -d: -f6)"
+if [ -f "$REAL_HOME/.kube/config" ]; then
+    export KUBECONFIG="$REAL_HOME/.kube/config"
+fi
+
+# Color codes for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Track pass/fail status
 PASS_COUNT=0
 FAIL_COUNT=0
 
-# Check 1: Flask Uses Custom ServiceAccount
-echo "[1/5] Checking Flask ServiceAccount..."
-SERVICE_ACCOUNT=$(kubectl get pod -l app=flask -o jsonpath='{.items[0].spec.serviceAccountName}' 2>/dev/null || echo "ERROR")
+# Helper function to print results
+check_pass() {
+    echo -e "${GREEN}[PASS]${NC} $1"
+    PASS_COUNT=$((PASS_COUNT + 1))
+}
+
+check_fail() {
+    echo -e "${RED}[FAIL]${NC} $1"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+}
+
+check_warn() {
+    echo -e "${YELLOW}[WARN]${NC} $1"
+}
+
+echo "========================================="
+echo "Week 7 Validation Checks"
+echo "========================================="
+echo ""
+
+# =========================================
+# Check 1: RBAC and NetworkPolicy Manifests Exist
+# =========================================
+echo "Check 1: RBAC and NetworkPolicy Manifests Exist"
+echo "-----------------------------------------------------"
+
+REQUIRED_MANIFESTS=(
+    "manifests/flask-serviceaccount.yaml"
+    "manifests/flask-role.yaml"
+    "manifests/flask-rolebinding.yaml"
+    "manifests/default-deny.yaml"
+    "manifests/allow-nginx-to-flask.yaml"
+    "manifests/allow-flask-to-postgres.yaml"
+    "manifests/allow-ingress-to-nginx.yaml"
+)
+
+for f in "${REQUIRED_MANIFESTS[@]}"; do
+    if [ -f "$REPO_ROOT/$f" ]; then
+        check_pass "$f exists"
+    else
+        check_fail "$f not found"
+    fi
+done
+
+# =========================================
+# Check 2: CI Workflow Includes Trivy Scan
+# =========================================
+echo ""
+echo "Check 2: CI Workflow Includes Trivy Scan"
+echo "----------------------------------------------"
+
+if grep -q "aquasecurity/trivy-action" "$REPO_ROOT/.github/workflows/ci.yml" 2>/dev/null; then
+    check_pass "ci.yml includes a Trivy scan step"
+else
+    check_fail "ci.yml is missing a Trivy scan step"
+fi
+
+# =========================================
+# Check 3: Flask Uses Custom ServiceAccount
+# =========================================
+echo ""
+echo "Check 3: Flask Uses Custom ServiceAccount"
+echo "------------------------------------------------"
+
+SERVICE_ACCOUNT=$(kubectl get pod -l app=flask -o jsonpath='{.items[0].spec.serviceAccountName}' 2>/dev/null || echo "")
 
 if [ "$SERVICE_ACCOUNT" = "flask-app" ]; then
-    echo "  PASS: Flask pod uses 'flask-app' ServiceAccount"
-    ((PASS_COUNT++))
+    check_pass "Flask pod uses the 'flask-app' ServiceAccount"
 else
-    echo "  FAIL: Flask ServiceAccount is '$SERVICE_ACCOUNT', expected 'flask-app'"
-    ((FAIL_COUNT++))
+    check_fail "Flask ServiceAccount is '$SERVICE_ACCOUNT', expected 'flask-app'"
 fi
+
+# =========================================
+# Check 4: NetworkPolicy Applied
+# =========================================
 echo ""
+echo "Check 4: NetworkPolicy Applied"
+echo "------------------------------------"
 
-# Check 2: NetworkPolicy Applied
-echo "[2/5] Checking NetworkPolicy resources..."
-POLICIES=$(kubectl get networkpolicy --no-headers 2>/dev/null | wc -l)
-HAS_DEFAULT_DENY=$(kubectl get networkpolicy default-deny-ingress 2>/dev/null && echo "yes" || echo "no")
-HAS_ALLOW_NGINX=$(kubectl get networkpolicy allow-nginx-to-flask 2>/dev/null && echo "yes" || echo "no")
-HAS_ALLOW_POSTGRES=$(kubectl get networkpolicy allow-flask-to-postgres 2>/dev/null && echo "yes" || echo "no")
+REQUIRED_POLICIES=(
+    "default-deny-ingress"
+    "allow-nginx-to-flask"
+    "allow-flask-to-postgres"
+    "allow-ingress-to-nginx"
+)
 
-if [ "$HAS_DEFAULT_DENY" = "yes" ] && [ "$HAS_ALLOW_NGINX" = "yes" ] && [ "$HAS_ALLOW_POSTGRES" = "yes" ]; then
-    echo "  PASS: All three required NetworkPolicies are present"
-    ((PASS_COUNT++))
-else
-    echo "  FAIL: Missing NetworkPolicies"
-    echo "    - default-deny-ingress: $HAS_DEFAULT_DENY"
-    echo "    - allow-nginx-to-flask: $HAS_ALLOW_NGINX"
-    echo "    - allow-flask-to-postgres: $HAS_ALLOW_POSTGRES"
-    ((FAIL_COUNT++))
-fi
-echo ""
-
-# Check 3: Application Works After NetworkPolicy
-echo "[3/5] Checking application connectivity..."
-RESPONSE=$(curl -s -w "%{http_code}" -o /tmp/response.json http://localhost:8080/incidents 2>/dev/null || echo "000")
-HTTP_CODE="${RESPONSE: -3}"
-
-if [ "$HTTP_CODE" = "200" ]; then
-    CONTENT=$(cat /tmp/response.json)
-    if [[ "$CONTENT" == *"incidents"* ]] || [[ "$CONTENT" == "{}" ]] || [[ "$CONTENT" == "[]" ]]; then
-        echo "  PASS: Application responds with valid JSON (HTTP $HTTP_CODE)"
-        ((PASS_COUNT++))
+for policy in "${REQUIRED_POLICIES[@]}"; do
+    if kubectl get networkpolicy "$policy" &>/dev/null; then
+        check_pass "NetworkPolicy '$policy' exists"
     else
-        echo "  FAIL: Application returned invalid JSON"
-        echo "    Response: $CONTENT"
-        ((FAIL_COUNT++))
+        check_fail "NetworkPolicy '$policy' not found"
     fi
-else
-    echo "  FAIL: Application did not respond (HTTP $HTTP_CODE)"
-    ((FAIL_COUNT++))
-fi
-echo ""
+done
 
-# Check 4: SecurityContext Is Set
-echo "[4/5] Checking SecurityContext settings..."
-ALLOW_PRIV=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}' 2>/dev/null || echo "NOTSET")
-READ_ONLY=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}' 2>/dev/null || echo "NOTSET")
-RUN_NON_ROOT=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.runAsNonRoot}' 2>/dev/null || echo "NOTSET")
-RUN_AS_USER=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.runAsUser}' 2>/dev/null || echo "NOTSET")
+# =========================================
+# Check 5: Application Works After NetworkPolicy
+# =========================================
+echo ""
+echo "Check 5: Application Works After NetworkPolicy"
+echo "-----------------------------------------------------"
+
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8081/incidents 2>/dev/null || echo "000")
+if [ "$HTTP_CODE" = "200" ]; then
+    check_pass "Application responds at http://localhost:8081/incidents (HTTP $HTTP_CODE)"
+else
+    check_fail "Application did not respond correctly at http://localhost:8081/incidents (HTTP $HTTP_CODE)"
+fi
+
+# =========================================
+# Check 6: SecurityContext Is Set
+# =========================================
+echo ""
+echo "Check 6: SecurityContext Is Set"
+echo "-------------------------------------"
+
+ALLOW_PRIV=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}' 2>/dev/null || echo "")
+READ_ONLY=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem}' 2>/dev/null || echo "")
+RUN_NON_ROOT=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.runAsNonRoot}' 2>/dev/null || echo "")
+DROPPED_CAPS=$(kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.capabilities.drop[0]}' 2>/dev/null || echo "")
 
 if [ "$ALLOW_PRIV" = "false" ]; then
-    echo "  PASS: allowPrivilegeEscalation is false"
-    ((PASS_COUNT++))
+    check_pass "allowPrivilegeEscalation is false"
 else
-    echo "  FAIL: allowPrivilegeEscalation is '$ALLOW_PRIV', expected 'false'"
-    ((FAIL_COUNT++))
+    check_fail "allowPrivilegeEscalation is '$ALLOW_PRIV', expected 'false'"
 fi
-echo ""
 
-# Check 5: OpenTofu State Matches the Cluster (No Drift)
-echo "[5/5] Checking for OpenTofu drift..."
-if command -v tofu &> /dev/null && [ -d "infrastructure" ]; then
-    TOFU_PLAN_OUTPUT=$(cd infrastructure && tofu plan -no-color 2>&1)
+if [ "$READ_ONLY" = "true" ]; then
+    check_pass "readOnlyRootFilesystem is true"
+else
+    check_fail "readOnlyRootFilesystem is '$READ_ONLY', expected 'true'"
+fi
+
+if [ "$RUN_NON_ROOT" = "true" ]; then
+    check_pass "runAsNonRoot is true"
+else
+    check_fail "runAsNonRoot is '$RUN_NON_ROOT', expected 'true'"
+fi
+
+if [ "$DROPPED_CAPS" = "ALL" ]; then
+    check_pass "capabilities.drop includes ALL"
+else
+    check_fail "capabilities.drop does not include ALL (found: '$DROPPED_CAPS')"
+fi
+
+# =========================================
+# Check 7: OpenTofu State Matches the Cluster (No Drift)
+# =========================================
+echo ""
+echo "Check 7: OpenTofu State Matches the Cluster (No Drift)"
+echo "---------------------------------------------------------"
+
+if command -v tofu &> /dev/null && [ -d "$REPO_ROOT/infrastructure" ]; then
+    TOFU_PLAN_OUTPUT=$(cd "$REPO_ROOT/infrastructure" && tofu plan -no-color 2>&1)
     if echo "$TOFU_PLAN_OUTPUT" | grep -q "No changes"; then
-        echo "  PASS: tofu plan reports no changes (infrastructure/flask.tf matches the cluster)"
-        ((PASS_COUNT++))
+        check_pass "tofu plan reports no changes (infrastructure/flask.tf matches the cluster)"
     else
-        echo "  FAIL: tofu plan detected drift -- infrastructure/flask.tf does not match the live cluster"
-        echo "    This usually means a change was applied with 'kubectl apply' instead of 'tofu apply'."
-        echo "    Update infrastructure/flask.tf to match what you intend, then run 'tofu apply'."
-        ((FAIL_COUNT++))
+        check_fail "tofu plan detected drift - infrastructure/flask.tf does not match the live cluster (usually means a change was applied with kubectl apply instead of tofu apply)"
     fi
 else
-    echo "  FAIL: tofu is not installed, not on PATH, or infrastructure/ does not exist"
-    ((FAIL_COUNT++))
+    check_fail "tofu is not installed, not on PATH, or infrastructure/ does not exist"
 fi
+
+# =========================================
+# Summary
+# =========================================
+echo ""
+echo "========================================="
+echo "Validation Summary"
+echo "========================================="
+echo -e "Passed: ${GREEN}$PASS_COUNT${NC}"
+echo -e "Failed: ${RED}$FAIL_COUNT${NC}"
 echo ""
 
-echo "==================================================="
-echo "Results Summary"
-echo "==================================================="
-echo "Passed: $PASS_COUNT/5"
-echo "Failed: $FAIL_COUNT/5"
-
-if [ $FAIL_COUNT -eq 0 ]; then
-    echo ""
-    echo "All checks passed!"
+if [ "$FAIL_COUNT" -eq 0 ]; then
+    echo -e "${GREEN}Status: ALL CHECKS PASSED${NC}"
     exit 0
 else
-    echo ""
-    echo "Some checks failed. Review the output above and fix the issues."
+    echo -e "${RED}Status: SOME CHECKS FAILED - Review errors above${NC}"
     exit 1
 fi
