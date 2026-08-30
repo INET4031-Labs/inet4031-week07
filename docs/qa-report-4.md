@@ -1,162 +1,197 @@
-# QA Report - Sprint 4
+# QA Report: Sprint 4 Week 7
 
-**Quality Assurance:** [TODO: Fill in name]
+**Owned by:** QA
 
-**Report Date:** [TODO: Date]
+This report documents the results of validation testing at the end of the synchronous lab session. It includes check script results, acceptance criteria verification, and any rework required before marking deliverables complete.
 
-**Sprint:** Sprint 4 (Weeks 7-8)
+This file is completed after RBAC, NetworkPolicy, and SecurityContext are all applied through OpenTofu/kubectl with no drift, and the Trivy scan job has run at least once in CI.
 
 ---
 
-## Check Script Results
+## Validation Check Results
 
-### Command Executed
+### Check 1: Flask Uses Custom ServiceAccount
 
-```bash
-./scripts/check-week7.sh
+**Test:** Run `kubectl get pod -l app=flask -o jsonpath='{.items[0].spec.serviceAccountName}'`
+
+**Expected:** `flask-app`
+
+**Actual Result:**
+```
+TODO: Paste the actual output
 ```
 
-**Exit Status:** [TODO: Fill in exit code - should be 0 for pass]
+**Status:** TODO: [ ] Pass [ ] Fail
 
-**Output:**
-
-```
-[TODO: Paste full check script output]
-```
+**Notes:** If this doesn't match, was the ServiceAccount change applied through `tofu apply` rather than a direct `kubectl edit`?
 
 ---
 
-## Validation Checks - Detailed Results
+### Check 2: NetworkPolicy Applied
 
-### Flask Uses Custom ServiceAccount
+**Test:** Run `kubectl get networkpolicy`
 
-**Command:**
-```bash
-kubectl get pod -l app=flask -o jsonpath='{.items[0].spec.serviceAccountName}'
+**Expected:** Rows for `default-deny-ingress`, `allow-nginx-to-flask`, `allow-flask-to-postgres`, and `allow-ingress-to-nginx`
+
+**Actual Result:**
+```
+TODO: Paste the actual output
 ```
 
-**Expected Output:** `flask-app`
+**Status:** TODO: [ ] Pass [ ] Fail
 
-**Actual Output:** [TODO: Fill in actual result]
-
-**Status:** [TODO: PASS or FAIL]
+**Notes:** All four are required -- `allow-ingress-to-nginx` is easy to miss since it's not part of the original three-policy set, but without it `default-deny-ingress` blocks all external traffic into nginx too.
 
 ---
 
-### NetworkPolicy Applied
+### Check 3: Application Works After NetworkPolicy
 
-**Command:**
-```bash
-kubectl get networkpolicy
+**Test:** Run `curl -s http://localhost:8081/incidents`
+
+**Expected:** Valid JSON response
+
+**Actual Result:**
+```
+TODO: Paste the actual response
 ```
 
-**Expected Output:** Rows for `default-deny-ingress`, `allow-nginx-to-flask`, `allow-flask-to-postgres`
+**Status:** TODO: [ ] Pass [ ] Fail
 
-**Actual Output:**
-
-```
-[TODO: Paste output]
-```
-
-**Status:** [TODO: PASS or FAIL]
+**Notes:** If this fails while Check 2 passes, check whether `allow-flask-to-postgres` actually selects `app: db` (the real label on the db Deployment) -- a mismatched label here silently blocks flask from reaching the database.
 
 ---
 
-### Application Works After NetworkPolicy
+### Check 4: SecurityContext Is Set
 
-**Command:**
-```bash
-curl -s http://localhost:8080/incidents
+**Test:** Run `kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}'`
+
+**Expected:** `false`
+
+**Actual Result:**
+```
+TODO: Paste the actual output
 ```
 
-**Expected Output:** Valid JSON response
+**Status:** TODO: [ ] Pass [ ] Fail
 
-**Actual Output:** [TODO: Paste response]
-
-**Status:** [TODO: PASS or FAIL]
+**Notes:** Also confirm `readOnlyRootFilesystem`, `runAsNonRoot`, and `capabilities.drop: [ALL]` are set -- this check only verifies one of the four SecurityContext fields Step 12 adds.
 
 ---
 
-### SecurityContext Is Set
+### Check 5: OpenTofu State Matches the Cluster (No Drift)
 
-**Command:**
-```bash
-kubectl get deployment flask -o jsonpath='{.spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation}'
+**Test:** Run `cd infrastructure && tofu plan`
+
+**Expected:** `No changes. Your infrastructure matches the configuration.`
+
+**Actual Result:**
+```
+TODO: Paste the actual output
 ```
 
-**Expected Output:** `false`
+**Status:** TODO: [ ] Pass [ ] Fail
 
-**Actual Output:** [TODO: Fill in actual result]
-
-**Status:** [TODO: PASS or FAIL]
+**Notes:** Drift here almost always means a change was applied with `kubectl apply`/`kubectl edit` instead of `tofu apply`.
 
 ---
 
-## Acceptance Criteria Coverage
+### Check 6: Check Script Passes
 
-| Criterion | Status | Notes |
-|-----------|--------|-------|
-| RBAC ServiceAccount configured | [TODO] | |
-| Role and RoleBinding created | [TODO] | |
-| NetworkPolicy default-deny applied | [TODO] | |
-| NetworkPolicy allow-nginx-to-flask applied | [TODO] | |
-| NetworkPolicy allow-flask-to-postgres applied | [TODO] | |
-| SecurityContext settings enforced | [TODO] | |
-| Trivy scanning added to CI | [TODO] | |
-| Application functional end-to-end | [TODO] | |
+**Test:** Run `chmod +x ./scripts/check-week7.sh` then `./scripts/check-week7.sh`
 
----
+**Expected:** All checks pass with exit code 0
 
-## Issues Found and Rework Required
+**Actual Result:**
+```
+TODO: Paste the full output of the check script
+```
 
-### Issue 1
+**Status:** TODO: [ ] Pass [ ] Fail
 
-**Description:** [TODO: Describe any issue found]
-
-**Severity:** [TODO: Critical / High / Medium / Low]
-
-**Root Cause:** [TODO: Explain why it occurred]
-
-**Resolution:** [TODO: What was done to fix it]
-
-**Rework Cycle:** [TODO: How many iterations to resolve]
+**Notes:** If any checks failed, what did the script report?
 
 ---
 
-### Issue 2
+## Acceptance Criteria Verification
 
-[TODO: Add additional issues if found]
+Review the criteria below for each part of this week's deliverables. For each criterion, record whether it was met:
+
+### Part 1: Kubernetes RBAC
+
+TODO: [ ] `manifests/flask-serviceaccount.yaml` created with `automountServiceAccountToken: false`
+TODO: [ ] `manifests/flask-role.yaml` created with least-privilege rules (configmaps get/list only)
+TODO: [ ] `manifests/flask-rolebinding.yaml` created, binding the Role to the `flask-app` ServiceAccount
+TODO: [ ] `infrastructure/flask.tf` updated with `service_account_name = "flask-app"`, applied via `tofu apply` (not `kubectl apply -f manifests/flask-deployment.yaml`, which OpenTofu no longer manages)
+
+### Part 2: NetworkPolicy
+
+TODO: [ ] `manifests/default-deny.yaml` created and applied; Step 8's debug-pod test actually timed out (not "connection refused" or immediate success)
+TODO: [ ] `manifests/allow-nginx-to-flask.yaml` created (`app: flask` selector, allows from `app: nginx` on port 5000)
+TODO: [ ] `manifests/allow-flask-to-postgres.yaml` created (`app: db` selector -- not `app: postgres`, which matches no real pods)
+TODO: [ ] `manifests/allow-ingress-to-nginx.yaml` created (`app: nginx` selector, allows port 80 from any source)
+TODO: [ ] All four policies applied; `curl http://localhost:8081/incidents` returns valid JSON end to end
+
+### Part 3: SecurityContext
+
+TODO: [ ] `infrastructure/flask.tf` container block gained `security_context` (allow_privilege_escalation=false, read_only_root_filesystem=true, run_as_non_root=true, run_as_user=1000, capabilities.drop=[ALL])
+TODO: [ ] Applied via `tofu apply`; flask pods restarted and came back healthy
+TODO: [ ] If pods failed on a read-only-filesystem write, the fix (e.g. an `emptyDir` mount) is documented
+
+### Part 4: Image Vulnerability Scanning in CI
+
+TODO: [ ] `.github/workflows/ci.yml` updated with a `security-scan` job running `aquasecurity/trivy-action`
+TODO: [ ] Job authenticates to `ghcr.io` before scanning and lowercases the image reference (both required -- the image is a private package, and `${{ github.repository }}` includes the org name uncased)
+TODO: [ ] Workflow run observed in the Actions tab; Trivy's log output captured regardless of pass/fail -- `exit-code: '1'` means a red X from real CRITICAL findings (e.g. unpatched base-image OS packages) is an expected, valid outcome, not a bug to chase
 
 ---
 
-## Summary
+## Deliverables Verification
 
-**Total Validation Checks:** 4
+### Required Files
 
-**Passed:** [TODO: Count]
+TODO: [ ] `manifests/flask-serviceaccount.yaml`, `flask-role.yaml`, `flask-rolebinding.yaml` committed
+TODO: [ ] `manifests/default-deny.yaml`, `allow-nginx-to-flask.yaml`, `allow-flask-to-postgres.yaml`, `allow-ingress-to-nginx.yaml` committed
+TODO: [ ] `infrastructure/flask.tf` updated with `service_account_name` and `security_context`
+TODO: [ ] `.github/workflows/ci.yml` updated with the `security-scan` job
+TODO: [ ] `scripts/check-week7.sh` present and runs clean
 
-**Failed:** [TODO: Count]
+### GitHub Repository
 
-**Rework Cycles Required:** [TODO: Count]
+TODO: [ ] All changes pushed to the main branch
+TODO: [ ] `tofu plan` shows no drift at time of push
 
-**Overall Assessment:** [TODO: APPROVED FOR DELIVERY or REQUIRES ADDITIONAL WORK]
+### Google Doc
+
+TODO: [ ] Screenshot of the Step 8 connection timeout is attached
+TODO: [ ] Screenshot of the application responding successfully after all NetworkPolicies applied is attached
+TODO: [ ] Trivy scan log/result from GitHub Actions is attached (pass or fail)
+TODO: [ ] Screenshot of `./scripts/check-week7.sh` passing is attached
+TODO: [ ] Discussion answers recorded for Parts 1-4 (RBAC attack surface, NetworkPolicy enforcement verification and remaining attack paths, read-only-filesystem tradeoffs, scan-stage tradeoffs)
 
 ---
 
-## Appendix: Screenshots
+## Rework Required
 
-### Screenshot 1: Default Deny Test Pod Timeout
+If any validation checks or acceptance criteria failed, document the rework needed:
 
-[TODO: Paste or reference screenshot of connection timeout]
+**Issues Found:**
+```
+TODO: List any failures here
+```
 
-### Screenshot 2: Application After Allow Policies
+**Rework Plan:**
+```
+TODO: For each failure, describe the steps to fix it and who will do the work
+```
 
-[TODO: Paste or reference screenshot of successful curl response]
+**Re-validation Date:** TODO: When will rework be complete?
 
-### Screenshot 3: Trivy Scan in GitHub Actions
+---
 
-[TODO: Paste or reference screenshot of scan job passing/results]
+## Sign-Off
 
-### Screenshot 4: Check Script Passing
+**QA Name:** ______________________
+**Date Signed:** ______________________
+**Overall Status:** TODO: [ ] All Criteria Met [ ] Rework Required
 
-[TODO: Paste or reference screenshot of check-week7.sh output]
+**Notes:** Any final observations about the sprint's technical quality and team coordination.
