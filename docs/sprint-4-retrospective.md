@@ -1,33 +1,33 @@
 # Sprint 4 Retrospective
 
-**Sprint 4 Dates:** [TODO: Add sprint start and end dates]
+**Owned by:** Scrum Master
 
-**Team:** [TODO: Add team name and members]
+This file is completed at the end of week 8. Review what your team shipped, what went well, what went poorly, and one specific process change for Sprint 5.
 
-## What Worked Well
+## What Went Well
 
-TODO: Document practices, decisions, and processes that went smoothly during Sprint 4.
+TODO: What did your team do well this sprint? What accomplishment are you proud of?
 
-## What Slowed Us Down
+## What Could Be Better
 
-TODO: Identify blockers, unclear requirements, tool issues, or coordination challenges that impacted Sprint 4 velocity.
+TODO: What was difficult? What slowed you down? What surprised you?
 
-## One Practice Change for Sprint 5
+## What We'll Do Differently Next Sprint
 
-TODO: Propose a single, specific change to how the team will work in Sprint 4 to address the issues identified above.
+TODO: Based on what you learned, name one specific process change or workflow improvement you will try in Sprint 5.
 
-## Evidence and Examples
+## Team Contributions
 
-TODO: Provide specific examples from Sprint 4 that illustrate your observations. For example:
-- Which task took longer than expected and why?
-- Which communication method worked best?
-- What surprised the team about monitoring and observability?
+Use this section to note which team members led which parts of the work:
 
-## Team Signature
+| Role | Name | Primary Contribution |
+|---|---|---|
+| Scrum Master | | |
+| System Admin | | |
+| QA | | |
+| Developer 1 | | |
+| Developer 2+ | | |
 
-All team members have reviewed and agree with this retrospective:
+## Notes
 
-- [TODO: Team member name]
-- [TODO: Team member name]
-- [TODO: Team member name]
-- [TODO: Team member name]
+Any additional context about the sprint that does not fit the structure above.
