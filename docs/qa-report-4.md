@@ -1,14 +1,13 @@
 # QA Report: Sprint 4 Week 7
 
-**Owned by:** QA
+QA is responsible for running all validation checks and signing off before deliverables are submitted. This report documents the validation process.
 
-This report documents the results of validation testing at the end of the synchronous lab session. It includes check script results, acceptance criteria verification, and any rework required before marking deliverables complete.
-
-This file is completed after RBAC, NetworkPolicy, and SecurityContext are all applied through OpenTofu/kubectl with no drift, and the Trivy scan job has run at least once in CI.
+**QA Team Member:** [Name]
+**Date Completed:** [Date]
 
 ---
 
-## Validation Check Results
+## Validation Checks
 
 ### Check 1: Flask Uses Custom ServiceAccount
 
@@ -188,10 +187,22 @@ TODO: For each failure, describe the steps to fix it and who will do the work
 
 ---
 
-## Sign-Off
+## Summary
 
-**QA Name:** ______________________
-**Date Signed:** ______________________
-**Overall Status:** TODO: [ ] All Criteria Met [ ] Rework Required
+**Overall Status:** [ ] ALL CHECKS PASS [ ] SOME CHECKS FAIL
 
-**Notes:** Any final observations about the sprint's technical quality and team coordination.
+**Blockers:** [List any blockers that prevent submission]
+
+**Corrective Actions Taken:** [List any fixes applied during QA]
+
+**QA Sign-Off:**
+
+By signing below, QA certifies that all required validation checks have been executed and all deliverables meet the acceptance criteria.
+
+**QA Signature:** _________________    **Date:** __________
+
+---
+
+## Notes for Sprint 5
+
+[Any observations or recommendations for the next sprint]
