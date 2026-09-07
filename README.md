@@ -1,10 +1,10 @@
 # Week 7: Security Hardening and Shift Left
 
-**Sprint 4 Kickoff | Synchronous Lab**
+**Sprint 4 Kickoff**
 
 ## Overview
 
-In this lab, you apply Kubernetes security controls to your deployed application: RBAC (Role-Based Access Control), NetworkPolicy to restrict pod-to-pod traffic, and SecurityContext to prevent privilege escalation inside containers. You will also add an automated image vulnerability scan to the CI pipeline, making security a gate on every build. After completing this lab, you will have a hardened application deployment with RBAC, NetworkPolicy, SecurityContext, and automated vulnerability scanning all committed to your repository.
+In this lab, you apply Kubernetes security controls to your deployed application: RBAC, NetworkPolicy to restrict pod-to-pod traffic, and SecurityContext to prevent privilege escalation inside containers. You will also add an automated image vulnerability scan to the CI pipeline, making security a gate on every build.
 
 ## Learning Objectives
 
@@ -34,34 +34,27 @@ git remote remove week7
 
 **`infrastructure/flask.tf` and `.github/workflows/ci.yml` are not shipped as
 files in this repo.** You edit your own existing Week 4 `infrastructure/flask.tf` and
-Week 6 `ci.yml` in place this week (adding `service_account_name`/`security_context` and
-a Trivy scan job respectively), following the wiki step by step -- neither file is
-replaced wholesale. Since Week 4, `infrastructure/flask.tf` (not `manifests/flask-deployment.yaml`)
-is the source of truth for the Flask Deployment, so that is where the `serviceAccountName`/
-`securityContext` additions belong; apply them with `tofu apply`, not `kubectl apply`.
-Your Week 3 manifests (`postgres-deployment.yaml`, the two `*-secret.yaml` files) are untouched.
+Week 6 `ci.yml` in place this week, following the wiki, neither file is replaced
+wholesale. Since Week 4, `infrastructure/flask.tf` is the source of truth for the Flask
+Deployment, so apply changes with `tofu apply`, not `kubectl apply`. Your Week 3
+manifests (`postgres-deployment.yaml`, the two `*-secret.yaml` files) are untouched.
 
-## Files and Directories
+## Role Distribution
 
-- `docs/` - Role-artifact templates (sprint retrospective, QA report)
-- `manifests/` - Kubernetes manifests for security controls (extended during this lab)
-- `scripts/` - Verification script for Week 7 deliverables
+- **Scrum Master:** owns sprint board, leads Sprint Review, coordinates async week preparation
+- **System Admin:** leads environment checkpoint, documents infrastructure decisions, verifies security control application
+- **QA:** runs validation checks, verifies RBAC/NetworkPolicy/SecurityContext are enforced, approves deliverables
+- **Developers:** implement RBAC, NetworkPolicy, SecurityContext, and CI scanning
 
-## Getting Started
+## Deliverables
 
-1. Read through the full lab directions in the Wiki tab from the top
-2. Complete the Sprint Review for Sprint 3 (Part 0 of the lab)
-3. Follow the role-specific task assignments
-4. Fill in role-artifact templates as you progress through the lab
-5. Run the validation checks and `check-week7.sh` before declaring deliverables complete
+- `manifests/flask-serviceaccount.yaml`, `flask-role.yaml`, `flask-rolebinding.yaml` committed
+- `manifests/default-deny.yaml` and the three explicit-allow NetworkPolicies committed
+- `infrastructure/flask.tf` updated with `service_account_name` and `security_context`
+- `.github/workflows/ci.yml` updated with Trivy scan job
+- `tofu plan` shows no drift
+- `./scripts/check-week7.sh` runs clean
 
-## Role Assignments
+## Full Instructions
 
-Week 7 is Sprint 4 Kickoff. Confirm your team's Sprint 4 role assignments:
-
-- **Scrum Master:** Owns sprint board, leads Sprint Review, coordinates async week preparation
-- **System Admin:** Leads environment checkpoint, documents infrastructure decisions, verifies security control application
-- **QA:** Runs validation checks, verifies RBAC/NetworkPolicy/SecurityContext are enforced, approves deliverables
-- **Developers:** Implement RBAC, NetworkPolicy, SecurityContext, and CI scanning
-
-Refer to your team charter for role rotation details.
+The complete step-by-step lab, including exact manifest YAML and Trivy configuration, is in this repo's Wiki tab. This README is a reference, not a substitute.
