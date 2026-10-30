@@ -67,6 +67,8 @@ REQUIRED_MANIFESTS=(
     "manifests/allow-nginx-to-flask.yaml"
     "manifests/allow-flask-to-postgres.yaml"
     "manifests/allow-ingress-to-nginx.yaml"
+    "manifests/allow-prometheus-to-flask.yaml"
+    "manifests/flask-securitycontext-patch.yaml"
 )
 
 for f in "${REQUIRED_MANIFESTS[@]}"; do
@@ -117,6 +119,7 @@ REQUIRED_POLICIES=(
     "allow-nginx-to-flask"
     "allow-flask-to-postgres"
     "allow-ingress-to-nginx"
+    "allow-prometheus-to-flask"
 )
 
 for policy in "${REQUIRED_POLICIES[@]}"; do
@@ -134,11 +137,17 @@ echo ""
 echo "Check 5: Application Works After NetworkPolicy"
 echo "-----------------------------------------------------"
 
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:8081/incidents 2>/dev/null || echo "000")
+# Kubernetes port is the team's Week 2 HOST_PORT + 10 (e.g. 8083 -> 8093)
+if [ -f "$REPO_ROOT/week-2/.env" ]; then
+    HOST_PORT=$(grep -E "^HOST_PORT=" "$REPO_ROOT/week-2/.env" | cut -d '=' -f2)
+fi
+KUBE_PORT=$(( ${HOST_PORT:-8071} + 10 ))
+
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 5 http://localhost:${KUBE_PORT}/incidents 2>/dev/null || true)
 if [ "$HTTP_CODE" = "200" ]; then
-    check_pass "Application responds at http://localhost:8081/incidents (HTTP $HTTP_CODE)"
+    check_pass "Application responds at http://localhost:${KUBE_PORT}/incidents (HTTP $HTTP_CODE)"
 else
-    check_fail "Application did not respond correctly at http://localhost:8081/incidents (HTTP $HTTP_CODE)"
+    check_fail "Application did not respond correctly at http://localhost:${KUBE_PORT}/incidents (HTTP $HTTP_CODE) - check HOST_PORT in week-2/.env matches your assigned port"
 fi
 
 # =========================================
@@ -178,21 +187,26 @@ else
 fi
 
 # =========================================
-# Check 7: OpenTofu State Matches the Cluster (No Drift)
+# Check 7: OpenTofu Configuration Updated (not applied this week)
 # =========================================
 echo ""
-echo "Check 7: OpenTofu State Matches the Cluster (No Drift)"
+echo "Check 7: OpenTofu Configuration Updated"
 echo "---------------------------------------------------------"
 
-if command -v tofu &> /dev/null && [ -d "$REPO_ROOT/infrastructure" ]; then
-    TOFU_PLAN_OUTPUT=$(cd "$REPO_ROOT/infrastructure" && tofu plan -no-color 2>&1)
-    if echo "$TOFU_PLAN_OUTPUT" | grep -q "No changes"; then
-        check_pass "tofu plan reports no changes (infrastructure/flask.tf matches the cluster)"
+FLASK_TF="$REPO_ROOT/infrastructure/flask.tf"
+if [ -f "$FLASK_TF" ]; then
+    if grep -Eq 'service_account_name[[:space:]]*=[[:space:]]*"flask-app"' "$FLASK_TF"; then
+        check_pass "flask.tf sets service_account_name = \"flask-app\""
     else
-        check_fail "tofu plan detected drift - infrastructure/flask.tf does not match the live cluster (usually means a change was applied with kubectl apply instead of tofu apply)"
+        check_fail "flask.tf is missing service_account_name = \"flask-app\""
+    fi
+    if grep -Eq 'allow_privilege_escalation[[:space:]]*=[[:space:]]*false' "$FLASK_TF"; then
+        check_pass "flask.tf has a security_context with allow_privilege_escalation = false"
+    else
+        check_fail "flask.tf is missing the security_context block"
     fi
 else
-    check_fail "tofu is not installed, not on PATH, or infrastructure/ does not exist"
+    check_fail "infrastructure/flask.tf not found"
 fi
 
 # =========================================
